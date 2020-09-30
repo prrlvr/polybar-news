@@ -2,6 +2,7 @@
 
 import nntplib
 import sys
+import subprocess
 
 url = 'news.epita.fr'
 groups = ["assistants.news", "assistants.piscine", "announcement.ing1"]
@@ -20,36 +21,60 @@ def get_news(connection):
             subject = nntplib.decode_header(over['subject'])
             if not 'NETIQUETTE' in subject:
                 # remove response about the netiquette
-                group_news.append((id, subject))
-        news.append(group_news)
+                group_news.insert(0, (id, subject))
+        news.append((grp, group_news))
     return news
 
 def rofi_format(news):
-    s = "\0prompt\x1ftest\n"
-    for i in range(len(news)):
+    s = ""
+    for name, grp in news:
         #s += "\0urgent\x1f<b>{}</b>\n".format(groups[i])
-        for n, header in news[i]:
-            s += "({}-{})\t{}\n".format(n, groups[i][groups[i].find('.')+1:]
+        for n, header in grp:
+            s += "({}-{})\t{}\n".format(n, name[name.find('.')+1:]
                     , header)
-    #print(s, file=sys.stderr)
     return s
 
-def open_news():
-    pass
+def parse_line(line):
+    t = line.find('\t')
+    header = line[t+1:]
+    line = (line[:t]).split('-')
+    n = line[0][1:]
+    group = line[1][:-1]
+    return (n, group, header)
+
+def open_news(line, news, connection):
+    (n, group, header) = parse_line(line)
+    for grp in groups:
+        if group in grp:
+            group = grp
+            break
+    connection.group(group)
+    body = connection.body(n)[1][2]
+    s = ""
+    for e in body[1:]:
+        l = e.decode()
+        print(l, file=sys.stderr)
+        if l == '':
+            s += '\n \n'
+        else:
+            s += l
+    print(s)
+    #subprocess.call(['alacritty', '-e',
+    #    "echo \"**{}\n\n{}\" | less".format(header, body)])
 
 def main(args):
-    print(args, file=sys.stderr)
     connection = connect(url)
+    # news = [(grpName, [(msgNbr, header))]]
     news = get_news(connection)
     if len(args) == 1:
         # rofi mode
         print(rofi_format(news))
     if len(args) > 1 and args[1] in 'polybar':
         # what's printed on polybar
-        print(news[0][-1][1])
-    else:
-        open_news(args[1])
-        return 0
+        print(news[0][1][0][1])
+    elif len(args) == 2:
+        #when an entry is selectionned in rofi
+        open_news(args[1], news, connection)
     return 0
 
 main(sys.argv)
