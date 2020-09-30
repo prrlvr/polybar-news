@@ -27,15 +27,18 @@ def get_news(connection):
 def rofi_format(news):
     s = "\0prompt\x1ftest\n"
     for i in range(len(news)):
-        # s += "\0urgent\x1f<b>{}</b>\n".format(groups[i])
+        #s += "\0urgent\x1f<b>{}</b>\n".format(groups[i])
         for n, header in news[i]:
-            #s += "\0({})\x1f{}\x1f<it>{}</it>\n".format(id, header, groups[i])
-            s += "{}\n".format(header)
+            s += "({}-{})\t{}\n".format(n, groups[i][groups[i].find('.')+1:]
+                    , header)
     #print(s, file=sys.stderr)
     return s
 
+def open_news():
+    pass
+
 def main(args):
-    #print(args, file=sys.stderr)
+    print(args, file=sys.stderr)
     connection = connect(url)
     news = get_news(connection)
     if len(args) == 1:
@@ -45,7 +48,7 @@ def main(args):
         # what's printed on polybar
         print(news[0][-1][1])
     else:
-        #rofi action
+        open_news(args[1])
         return 0
     return 0
 
