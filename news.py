@@ -42,7 +42,7 @@ def parse_line(line):
     group = line[1][:-1]
     return (n, group, header)
 
-def open_news(line, news, connection):
+def open_news(line, news, connection, width):
     (n, group, header) = parse_line(line)
     for grp in groups:
         if group in grp:
@@ -50,31 +50,38 @@ def open_news(line, news, connection):
             break
     connection.group(group)
     body = connection.body(n)[1][2]
-    s = ""
-    for e in body[1:]:
-        l = e.decode()
-        print(l, file=sys.stderr)
-        if l == '':
-            s += '\n \n'
-        else:
-            s += l
-    print(s)
+    print(format_text([e.decode() for e in body], width))
     #subprocess.call(['alacritty', '-e',
     #    "echo \"**{}\n\n{}\" | less".format(header, body)])
+
+def format_text(t, width):
+    s = ""
+    # -1 to include the \n
+    width -= 1
+    for line in t:
+        if line == '':
+            s += '\n \n'
+        elif len(line) > width:
+            s += line[:width] + '-\n'
+            s += line[width:]
+        else:
+            s += line
+        s += '\n'
+    return s
 
 def main(args):
     connection = connect(url)
     # news = [(grpName, [(msgNbr, header))]]
     news = get_news(connection)
-    if len(args) == 1:
-        # rofi mode
-        print(rofi_format(news))
     if len(args) > 1 and args[1] in 'polybar':
         # what's printed on polybar
         print(news[0][1][0][1])
     elif len(args) == 2:
+        # rofi mode
+        print(rofi_format(news))
+    elif len(args) == 3:
         #when an entry is selectionned in rofi
-        open_news(args[1], news, connection)
+        open_news(args[2], news, connection, int(args[1]))
     return 0
 
 main(sys.argv)
